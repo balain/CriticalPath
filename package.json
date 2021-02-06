@@ -1,0 +1,17 @@
+{
+  "name": "criticalpath",
+  "version": "1.0.0",
+  "description": "",
+  "main": "cp.js",
+  "scripts": {
+    "test": "ava"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "debug": "^4.3.1"
+  },
+  "devDependencies": {
+    "ava": "^3.15.0"
+  }
+}
