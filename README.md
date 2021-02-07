@@ -5,15 +5,34 @@ Based on [PMI.org article](https://www.pmi.org/learning/library/critical-path-me
 
 Kramer, S. W. & Jenkins, J. L. (2006). Understanding the basics of CPM calculations: what is scheduling software really telling you? Paper presented at PMI® Global Congress 2006—North America, Seattle, WA. Newtown Square, PA: Project Management Institute.
 
+# Dependencies
+
+- [debug](https://github.com/visionmedia/debug#readme)
+- [Frappe/gantt](https://github.com/frappe/gantt/tree/master/dist) for HTML output
+
 # Features
 
-## Handles multiple critical paths
+- Handles multiple critical paths (see below)
+- Output to HTML file - 
 
-### Example: Dual critical paths in three channels
+## HTML output
+*see demo-*.js_ for examples*
+
+```
+const FrappeMaker = require('./frappeMaker')
+const frappeGantt = new FrappeMaker()
+... // Create and add tasks to the schedule here
+schedule.calc()
+let cp = schedule.criticalPath()
+frappeGantt.saveTaskListToGantt(schedule, 'demo-complex.html')
+```
+
+
+## Examples: Dual critical paths in three channels
 
 ![Example](example.png)
 
-#### Critical Paths:
+### Critical Paths:
   
 1.  a - b - d - g - h - i - k - n - p - r - s
 1.  a - b - d - g - h - j - m - o - r - s

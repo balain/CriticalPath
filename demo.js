@@ -10,6 +10,9 @@ const debug = require('debug')('cp')
 const Schedule = require('./schedule')
 const Task = require('./task')
 
+const FrappeMaker = require('./frappeMaker')
+const frappeGantt = new FrappeMaker()
+
 const schedule = new Schedule()
 
 let a = new Task("a", 5)
@@ -35,3 +38,5 @@ schedule.calc()
 let cp = schedule.criticalPath()
 console.log(`Duration: ${cp.duration}`)
 console.table(cp.tasks)
+
+frappeGantt.saveTaskListToGantt(schedule)
