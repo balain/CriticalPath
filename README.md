@@ -35,3 +35,20 @@ Kramer, S. W. & Jenkins, J. L. (2006). Understanding the basics of CPM calculati
 |   11    | 'p' |    6     |         [ [Task] ]         |     [ [Task], [Task] ]     | 36 | 42 | 36 | 42 | 0  | 0  |
 |   12    | 'r' |    8     |     [ [Task], [Task] ]     |         [ [Task] ]         | 42 | 50 | 42 | 50 | 0  | 0  |
 |   13    | 's' |    1     |     [ [Task], [Task] ]     |             []             | 50 | 51 | 50 | 51 | 0  | 0  |
+
+# Tests
+See tests.js for the full suite
+
+## Single Critical Path
+- simple-short-single-channel
+- simple-long-single-channel
+- simple-dual-channel
+- simple-alt-dual-channel
+- complex-dual-channel
+- simple-triple-channel
+- moderate-triple-channel
+
+## Dual Critical Paths
+- simple-dual-channel
+- complex-dual-channel
+- moderate-triple-channel
