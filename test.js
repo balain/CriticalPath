@@ -124,7 +124,7 @@ test('single-cp-simple-dual-channel', t => {
 	t.true(cp.tasks.includes(a))
 	t.true(cp.tasks.includes(b))
 	t.true(cp.tasks.includes(c))
-
+	t.false(cp.tasks.includes(d))
 	t.true(cp.tasks.includes(e))
 	t.true(cp.tasks.includes(f))
 	t.is(cp.duration, sumDurations([aDur, bDur, cDur, eDur, fDur]))
@@ -166,7 +166,7 @@ test('single-cp-simple-alt-dual-channel', t => {
 	t.true(cp.tasks.includes(a))
 	t.true(cp.tasks.includes(b))
 	t.true(cp.tasks.includes(c))
-
+	t.false(cp.tasks.includes(d))
 	t.true(cp.tasks.includes(e))
 	t.true(cp.tasks.includes(f))
 	t.is(cp.duration, sumDurations([aDur, bDur, cDur, eDur, fDur]))
@@ -183,7 +183,7 @@ test('single-cp-simple-alt-dual-channel', t => {
  * a - b - c - f - g - i - k - l
  *
  */
-test('single-cp-somplex-dual-channel', t => {
+test('single-cp-complex-dual-channel', t => {
 	const schedule = new Schedule()
 
 	let aDur = 5
@@ -220,9 +220,13 @@ test('single-cp-somplex-dual-channel', t => {
 	t.true(cp.tasks.includes(a))
 	t.true(cp.tasks.includes(b))
 	t.true(cp.tasks.includes(c))
+	t.false(cp.tasks.includes(d))
+	t.false(cp.tasks.includes(e))
 	t.true(cp.tasks.includes(f))
 	t.true(cp.tasks.includes(g))
+	t.false(cp.tasks.includes(h))
 	t.true(cp.tasks.includes(i))
+	t.false(cp.tasks.includes(j))
 	t.true(cp.tasks.includes(k))
 	t.true(cp.tasks.includes(l))
 
@@ -365,4 +369,198 @@ test('single-cp-moderate-triple-channel', t => {
 	t.true(cp.tasks.includes(s))
 
 	t.is(cp.duration, sumDurations([aDur, bDur, dDur, gDur, hDur,iDur,kDur,nDur,pDur,rDur,sDur]))
+})
+
+/*
+ * Dual Critical Path: Simple dual channel
+ * a - b - d - e - f 
+ *       \   /   
+ *         c 
+ *
+ * Critical Paths:
+ *
+ * a - b - c - e - f
+ * a - b - d - e - f
+ *
+ */
+test('dual-cp-simple-dual-channel', t => {
+	const schedule = new Schedule()
+
+	let aDur = 5
+	let bDur = 3
+	let cDur = 6
+	let dDur = cDur
+	let eDur = 1
+	let fDur = 4
+
+	let a = new Task("a", aDur)
+	let b = new Task("b", bDur, [a])
+	let c = new Task("c", cDur, [b])
+	let d = new Task("d", dDur, [b])
+	let e = new Task("e", eDur, [c,d])
+	let f = new Task("f", fDur, [e])
+	
+	schedule.addTasks([a,b,c,d,e,f])
+	schedule.calc()
+	let cp = schedule.criticalPath()
+	
+	t.is(cp.tasks.length, 6)
+	t.true(cp.tasks.includes(a))
+	t.true(cp.tasks.includes(b))
+	t.true(cp.tasks.includes(c))
+	t.true(cp.tasks.includes(d))
+	t.true(cp.tasks.includes(e))
+	t.true(cp.tasks.includes(f))
+	t.is(cp.duration, sumDurations([aDur, bDur, cDur, eDur, fDur]))
+	// console.table(cp.tasks)
+})
+
+/*
+ * Dual Critical Path: Complex dual channel
+ * a - b - d - e - g - h - j - l 
+ *       \   /   /   \       /
+ *         c - f       i - k 
+ *
+ * Critical Paths:
+ *
+ * a - b - c - e - g - i - k - l
+ * a - b - c - f - g - i - k - l
+ *
+ */
+test('dual-cp-complex-dual-channel', t => {
+	const schedule = new Schedule()
+
+	let aDur = 5
+	let bDur = 3
+	let cDur = 6
+	let dDur = 2
+	let eDur = 4
+	let fDur = 4
+	let gDur = 7
+	let hDur = 1
+	let iDur = 5
+	let jDur = 3
+	let kDur = 8
+	let lDur = 2
+
+	let a = new Task("a", aDur)
+	let b = new Task("b", bDur, [a])
+	let c = new Task("c", cDur, [b])
+	let d = new Task("d", dDur, [b])
+	let e = new Task("e", eDur, [c,d])
+	let f = new Task("f", fDur, [c])
+	let g = new Task("g", gDur, [e,f])
+	let h = new Task("h", hDur, [g])
+	let i = new Task("i", iDur, [g])
+	let j = new Task("j", jDur, [h])
+	let k = new Task("k", kDur, [i])
+	let l = new Task("l", lDur, [j,k])
+	
+	schedule.addTasks([a,b,c,d,e,f,g,h,i,j,k,l])
+	schedule.calc()
+	let cp = schedule.criticalPath()
+	
+	t.is(cp.tasks.length, 9)
+	t.true(cp.tasks.includes(a))
+	t.true(cp.tasks.includes(b))
+	t.true(cp.tasks.includes(c))
+	t.false(cp.tasks.includes(d))
+	t.true(cp.tasks.includes(e))
+	t.true(cp.tasks.includes(f))
+	t.true(cp.tasks.includes(g))
+	t.false(cp.tasks.includes(h))
+	t.true(cp.tasks.includes(i))
+	t.false(cp.tasks.includes(j))
+	t.true(cp.tasks.includes(k))
+	t.true(cp.tasks.includes(l))
+
+	t.is(cp.duration, sumDurations([aDur, bDur, cDur, fDur, gDur,iDur,kDur,lDur]))
+	t.is(cp.duration, sumDurations([aDur, bDur, cDur, eDur, gDur,iDur,kDur,lDur]))
+})
+
+/*
+ * Dual Critical Path: Moderate triple channel
+ * a - b - c - e           k - n - p - q
+ *       \   /   \       /   /       \   \
+ *         d - f - h - i - l           r - s
+ *           \   /   \               /
+ *             g       j - m - o - - 
+ *
+ * Critical Paths:
+ *
+ * a - b - d - g - h - i - k - n - p - r - s
+ * a - b - d - g - h - j - m - o - r - s
+ *
+ */
+test('dual-cp-moderate-triple-channel', t => {
+	const schedule = new Schedule()
+
+	let aDur = 5
+	let bDur = 3
+	let cDur = 6
+	let dDur = 2
+	let eDur = 1
+	let fDur = 4
+	let gDur = 7
+	let hDur = 1
+	let iDur = 5
+	let jDur = 6
+	let kDur = 8
+	let lDur = 2
+	let mDur = 6
+	let nDur = 5
+	let oDur = 12
+	let pDur = 6
+	let qDur = 4
+	let rDur = 8
+	let sDur = 1
+
+	let a = new Task("a", aDur)
+	let b = new Task("b", bDur, [a])
+	let c = new Task("c", cDur, [b])
+	let d = new Task("d", dDur, [b])
+	let e = new Task("e", eDur, [c,d])
+	let f = new Task("f", fDur, [d])
+	let g = new Task("g", gDur, [d])
+	let h = new Task("h", hDur, [e,f,g])
+	let i = new Task("i", iDur, [h])
+	let j = new Task("j", jDur, [h])
+	let k = new Task("k", kDur, [i])
+	let l = new Task("l", lDur, [i])
+	let m = new Task("m", mDur, [j])
+	let n = new Task("n", nDur, [k,l])
+	let o = new Task("o", oDur, [m])
+	let p = new Task("p", pDur, [n])
+	let q = new Task("q", qDur, [p])
+	let r = new Task("r", rDur, [p,o])
+	let s = new Task("s", sDur, [q,r])
+	
+	schedule.addTasks([a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s])
+	schedule.calc()
+	let cp = schedule.criticalPath()
+	
+	t.is(cp.tasks.length, 14)
+	t.true(cp.tasks.includes(a))
+	t.true(cp.tasks.includes(b))
+	t.false(cp.tasks.includes(c))
+	t.true(cp.tasks.includes(d))
+	t.false(cp.tasks.includes(e))
+	t.false(cp.tasks.includes(f))
+	t.true(cp.tasks.includes(g))
+	t.true(cp.tasks.includes(h))
+	t.true(cp.tasks.includes(i))
+	t.true(cp.tasks.includes(j))
+	t.true(cp.tasks.includes(k))
+	t.false(cp.tasks.includes(l))
+	t.true(cp.tasks.includes(m))
+	t.true(cp.tasks.includes(n))
+	t.true(cp.tasks.includes(o))
+	t.true(cp.tasks.includes(p))
+	t.false(cp.tasks.includes(q))
+	t.true(cp.tasks.includes(r))
+	t.true(cp.tasks.includes(s))
+
+	t.is(cp.duration, sumDurations([aDur, bDur, dDur, gDur, hDur,iDur,kDur,nDur,pDur,rDur,sDur]))
+	t.is(cp.duration, sumDurations([aDur, bDur, dDur, gDur, hDur,jDur,mDur,oDur,rDur,sDur]))
+	// console.table(cp.tasks)
 })
