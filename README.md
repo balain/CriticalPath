@@ -37,7 +37,7 @@ Kramer, S. W. & Jenkins, J. L. (2006). Understanding the basics of CPM calculati
 |   13    | 's' |    1     |     [ [Task], [Task] ]     |             []             | 50 | 51 | 50 | 51 | 0  | 0  |
 
 # Tests
-See tests.js for the full suite
+See test.js for the full suite
 
 ## Single Critical Path
 - simple-short-single-channel
