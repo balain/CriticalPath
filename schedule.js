@@ -8,6 +8,7 @@ const Task = require('./task')
 class Schedule {
 	constructor() {
 		this.tasks = []
+		this.calculated = false
 	}
 
 	addTasks(taskArray) {
@@ -37,6 +38,7 @@ class Schedule {
 			this._calcFF(t)
 		})
 		this._sanityCheck() // Throw Error if any problems are found
+		this.calculated = true
 	}
 
 	_calcTF(t) {
@@ -117,6 +119,14 @@ class Schedule {
 		return(lt)
 	}
 
+	getHeadTasks() {
+		return this.tasks.filter(t => t.ff ==0 && t.tf == 0 && t.preds.length == 0)
+	}
+	
+	getTailTasks() {
+		return this.tasks.filter(t => t.ff == 0 && t.tf == 0 && t.succs.length == 0)
+	}
+	
 	criticalPath() {
 		let criticalPathTasks = []
 		let dur = -1
@@ -128,6 +138,38 @@ class Schedule {
 			}
 		})
 		return({ tasks: criticalPathTasks, duration: dur })
+	}
+	
+	calcCriticalPaths() {
+		if (!this.calculated) {
+			this.calc()
+		}
+		this.criticalPaths = []
+		this.getHeadTasks().forEach((t) => {
+			this.walkCP(t, [t], 0)
+		})                               
+	}
+
+	walkCP(task, path, level) {
+		if (task.succs.length) {
+			task.succs.forEach((s) => {
+				if (s.tf == 0 && s.ff == 0) {
+					// Truncate path to end in task
+					path.splice(level+1)
+					path.push(s)
+					this.walkCP(s, path, level + 1)
+				}
+			})
+		} else {
+			this.criticalPaths.push(path.map(t => t.id))
+		}
+	}
+
+	countCriticalPaths() {
+		if (!this.criticalPaths) {
+			this.calcCriticalPaths()
+		}
+		return(this.criticalPaths.length)
 	}
 }
 

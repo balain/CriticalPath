@@ -25,32 +25,35 @@ class Task {
 		return(`Task: ${this.id}: Start: ${this.start}; Dur: ${this.duration}; ES: ${this.es}; EF: ${this.ef}; LS: ${this.ls}; LF: ${this.lf}; Pred count: ${this.preds.length}; Succ count: ${this.succs.length}`)
 	}
 
+
 	setSuccs(s) {
-		debug(`${this.id}: setSuccs(${s.id}) - typeof: ${typeof s}`)
-		if ((typeof s == 'string') || (typeof s == 'number')) {
-			this.addPred(s)
+		debug(`${this.id}: typeof: ${typeof s}`)
+		if (s instanceof Task) {
+			debug(`...setSuccs(${s.id})`)
+			this.addSucc(s)
 		} else if (typeof s == 'object') {
-			debug(`...adding ${p.id}`)
 			s.forEach((succ) => {
+				debug(`...setSuccs(${succ.id})`)
 				this.addSucc(succ)
 			})
 		}
 	}
-	
+
 	addSucc(t) { 
 		debug(`${this.id}: addSucc(${t.id})...`)
-		this.succs.push(t)
-		if (!t.preds.includes(this)) {
-			t.preds.push(this)
+		if (t instanceof Task) {
+			this.succs.push(t)
+			if (!t.preds.includes(this)) {
+				t.preds.push(this)
+			}
+		} else {
+			throw new TypeError(`Invalid successor type provided: ${typeof t}`)
 		}
 	}
-	
+
 	setPreds(p) {
 		debug(`${this.id}: typeof: ${typeof p}`)
-		if ((typeof p == 'string') || (typeof p == 'number')) {
-			debug(`...setPreds(${p})`)
-			this.addPred(p)
-		} else if (p instanceof Task) {
+		if (p instanceof Task) {
 			debug(`...setPreds(${p.id})`)
 			this.addPred(p)
 		} else if (typeof p == 'object') {
@@ -61,11 +64,16 @@ class Task {
 		}
 	}
 
+
 	addPred(t) {
 		debug(`${this.id}: addPred(${t.id})...`)
-		this.preds.push(t)
-		if (!t.succs.includes(this)) {
-			t.succs.push(this)
+		if (t instanceof Task) {
+			this.preds.push(t)
+			if (!t.succs.includes(this)) {
+				t.succs.push(this)
+			}			
+		} else {
+			throw new TypeError(`Invalid predecessor type provided: ${typeof t}`)
 		}
 	}
 }

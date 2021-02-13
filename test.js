@@ -19,12 +19,44 @@ function sumDurations(durs) {
 
 test.beforeEach(t => { })
 
+test('schedule-toString', t => {
+	const schedule = new Schedule()
+	schedule.addTask(new Task("a", 10))
+	console.log(schedule.toString())
+	t.pass()
+})
+
+test('task-to-string', t => {
+  const task = new Task("a", 10)
+  console.log(task.toString())
+  t.true(task.toString() === `Task: a: Start: undefined; Dur: 10; ES: -1; EF: -1; LS: 9999; LF: 9999; Pred count: 0; Succ count: 0`)
+})
+
+test('pred-succ-errors', t => {
+	const schedule = new Schedule()
+	let a = new Task("a", 3)
+  let b = new Task("b", 10)
+  let c = new Task("c", a, b)
+  
+  t.throws(() => { a.addSucc("b"); }, { instanceOf: TypeError })
+  t.throws(() => { b.addPred("a"); }, { instanceOf: TypeError })
+  t.pass()
+})
+
+test('pred-succ-setting', t => {
+	const schedule = new Schedule()
+	let a = new Task("a", 3)
+  let b = new Task("b", 10)
+  b.setPreds(a)
+  t.pass()
+})
+
 /*
  * Single Critical Path: Simple short single channel
  * a - b - c
  *
  * Critical Path:
- * a - b - c 
+ * a - b - c
  *
  */
 test('single-cp-simple-short-single-channel', t => {
@@ -51,11 +83,11 @@ test('single-cp-simple-short-single-channel', t => {
 /*
  * Single Critical Path: Simple long single channel
  * a - b - c - d - e - f
- * 
+ *
  * Critical Path:
- * 
+ *
  * a - b - c - d - e - f
- * 
+ *
  */
 test('single-cp-simple-long-single-channel', t => {
 	const schedule = new Schedule()
@@ -90,9 +122,9 @@ test('single-cp-simple-long-single-channel', t => {
 
 /*
  * Single Critical Path: Simple dual channel
- * a - b - d - e - f 
- *       \   /   
- *         c 
+ * a - b - d - e - f
+ *       \   /
+ *         c
  *
  * Critical Path:
  *
@@ -132,7 +164,7 @@ test('single-cp-simple-dual-channel', t => {
 
 /*
  * Single Critical Path: Simple alt dual channel
- * a - b - d - e - f 
+ * a - b - d - e - f
  *       \   /   /
  *         c ----
  *
@@ -174,9 +206,9 @@ test('single-cp-simple-alt-dual-channel', t => {
 
 /*
  * Single Critical Path: Complex dual channel
- * a - b - d - e - g - h - j - l 
+ * a - b - d - e - g - h - j - l
  *       \   /   /   \       /
- *         c - f       i - k 
+ *         c - f       i - k
  *
  * Critical Path:
  *
@@ -235,11 +267,11 @@ test('single-cp-complex-dual-channel', t => {
 
 /*
  * Single Critical Path: Simple triple channel
- * a - b - c - e 
- *       \   /   \  
- *         d - f - h - i    
+ * a - b - c - e
+ *       \   /   \
+ *         d - f - h - i
  *           \   /
- *             g 
+ *             g
  *
  * Critical Path:
  *
@@ -293,7 +325,7 @@ test('single-cp-simple-triple-channel', t => {
  *       \   /   \       /   /       \   \
  *         d - f - h - i - l           r - s
  *           \   /   \               /
- *             g       j - m - o - - 
+ *             g       j - m - o - -
  *
  * Critical Path:
  *
@@ -373,9 +405,9 @@ test('single-cp-moderate-triple-channel', t => {
 
 /*
  * Dual Critical Path: Simple dual channel
- * a - b - d - e - f 
- *       \   /   
- *         c 
+ * a - b - d - e - f
+ *       \   /
+ *         c
  *
  * Critical Paths:
  *
@@ -417,9 +449,9 @@ test('dual-cp-simple-dual-channel', t => {
 
 /*
  * Dual Critical Path: Complex dual channel
- * a - b - d - e - g - h - j - l 
+ * a - b - d - e - g - h - j - l
  *       \   /   /   \       /
- *         c - f       i - k 
+ *         c - f       i - k
  *
  * Critical Paths:
  *
@@ -528,11 +560,14 @@ test('dual-cp-moderate-triple-channel', t => {
 	let k = new Task("k", kDur, [i])
 	let l = new Task("l", lDur, [i])
 	let m = new Task("m", mDur, [j])
-	let n = new Task("n", nDur, [k,l])
+	let n = new Task("n", nDur, [l])
+  k.setSuccs([n])
 	let o = new Task("o", oDur, [m])
 	let p = new Task("p", pDur, [n])
 	let q = new Task("q", qDur, [p])
-	let r = new Task("r", rDur, [p,o])
+	let r = new Task("r", rDur)
+  r.addPred(p)
+  o.setSuccs(r)
 	let s = new Task("s", sDur, [q,r])
 	
 	schedule.addTasks([a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s])
@@ -562,5 +597,129 @@ test('dual-cp-moderate-triple-channel', t => {
 
 	t.is(cp.duration, sumDurations([aDur, bDur, dDur, gDur, hDur,iDur,kDur,nDur,pDur,rDur,sDur]))
 	t.is(cp.duration, sumDurations([aDur, bDur, dDur, gDur, hDur,jDur,mDur,oDur,rDur,sDur]))
-	// console.table(cp.tasks)
+  
+  schedule.calcCriticalPaths()
+  
+  t.true(schedule.countCriticalPaths() == 2)
+
+  let criticalPaths = schedule.criticalPaths
+
+  t.true(criticalPaths[0].join('-') == `a-b-d-g-h-i-k-n-p-r-s`)
+  t.true(criticalPaths[1].join('-') == `a-b-d-g-h-j-m-o-r-s`)
+})
+
+/*
+ * Get the head tasks for all critical paths
+ * a - b - d - e - f
+ *       \   /
+ *         c
+ *
+ * Returns
+ * a
+ *
+ */
+test('getHeadAndTailTasks', t => {
+	const schedule = new Schedule()
+
+	let aDur = 5
+	let bDur = 3
+	let cDur = 6
+	let dDur = cDur
+	let eDur = 1
+	let fDur = 4
+
+	let a = new Task("a", aDur)
+	let b = new Task("b", bDur, [a])
+	let c = new Task("c", cDur, [b])
+	let d = new Task("d", dDur, [b])
+	let e = new Task("e", eDur, [c,d])
+	let f = new Task("f", fDur, [e])
+
+	schedule.addTasks([a,b,c,d,e,f])
+	schedule.calc()
+	let cp = schedule.criticalPath()
+
+	t.deepEqual(schedule.getHeadTasks(), [a])
+	t.deepEqual(schedule.getTailTasks(), [f])
+})
+
+/*
+ * Count Multiple Critical Paths: Simple dual channel
+ * a - b - d - e - f
+ *       \   /
+ *         c
+ *
+ * Critical Path Count: 2
+ *
+ * a - b - c - e - f
+ * a - b - d - e - f
+ *
+ */
+test('count-multiple-critical-paths', t => {
+	const schedule = new Schedule()
+
+	let aDur = 5
+	let bDur = 3
+	let cDur = 6
+	let dDur = cDur
+	let eDur = 1
+	let fDur = 4
+
+	let a = new Task("a", aDur)
+	let b = new Task("b", bDur, [a])
+	let c = new Task("c", cDur, [b])
+	let d = new Task("d", dDur, [b])
+	let e = new Task("e", eDur, [c,d])
+	let f = new Task("f", fDur, [e])
+
+	schedule.addTasks([a,b,c,d,e,f])
+	schedule.calc()
+	let cp = schedule.criticalPath()
+
+  t.is(schedule.countCriticalPaths(),2)
+
+})
+
+/*
+ * Print Multiple Critical Paths: Simple dual channel
+ * a - b - d - e - f
+ *       \   /
+ *         c
+ *
+ * Critical Paths:
+ *
+ * a - b - c - e - f
+ * a - b - d - e - f
+ *
+ * Where duration of "c" == duration of "d"
+ */
+test('print-multiple-critical-paths', t => {
+	const schedule = new Schedule()
+
+	let aDur = 5
+	let bDur = 3
+	let cDur = 6
+	let dDur = cDur
+	let eDur = 1
+	let fDur = 4
+
+	let a = new Task("a", aDur)
+	let b = new Task("b", bDur, [a])
+	let c = new Task("c", cDur, [b])
+	let d = new Task("d", dDur, [b])
+	let e = new Task("e", eDur, [c,d])
+	let f = new Task("f", fDur, [e])
+
+	schedule.addTasks([a,b,c,d,e,f])
+	schedule.calc()
+	let cp = schedule.criticalPath()
+
+	t.is(cp.tasks.length, 6)
+	t.true(cp.tasks.includes(a))
+	t.true(cp.tasks.includes(b))
+	t.true(cp.tasks.includes(c))
+	t.true(cp.tasks.includes(d))
+	t.true(cp.tasks.includes(e))
+	t.true(cp.tasks.includes(f))
+	t.is(cp.duration, sumDurations([aDur, bDur, cDur, eDur, fDur]))
 })

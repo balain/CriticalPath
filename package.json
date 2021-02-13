@@ -4,7 +4,7 @@
   "description": "",
   "main": "cp.js",
   "scripts": {
-    "test": "ava"
+    "test": "nyc ava"
   },
   "author": "",
   "license": "ISC",
@@ -12,6 +12,7 @@
     "debug": "^4.3.1"
   },
   "devDependencies": {
-    "ava": "^3.15.0"
+    "ava": "^3.15.0",
+    "nyc": "^15.1.0"
   }
 }
