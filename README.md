@@ -8,15 +8,14 @@ Kramer, S. W. & Jenkins, J. L. (2006). Understanding the basics of CPM calculati
 # Dependencies
 
 - [debug](https://github.com/visionmedia/debug#readme)
-- [Frappe/gantt](https://github.com/frappe/gantt/tree/master/dist) for HTML output
+- [Frappe/gantt](https://github.com/frappe/gantt/tree/master/dist) for HTML output. (See below for an example.)
 
 # Features
 
 - Handles multiple critical paths (see below)
-- Output to HTML file - 
+- Output to HTML file (see below)
 
-## HTML output
-*see demo-*.js_ for examples*
+## HTML Gantt chart output
 
 ```
 const FrappeMaker = require('./frappeMaker')
@@ -24,11 +23,13 @@ const frappeGantt = new FrappeMaker()
 ... // Create and add tasks to the schedule here
 schedule.calc()
 let cp = schedule.criticalPath()
-frappeGantt.saveTaskListToGantt(schedule, 'demo-complex.html')
+frappeGantt.saveTaskListToGantt(schedule, 'index.html')
 ```
 
+![Gantt Chart](gantt.png)
 
-## Examples: Dual critical paths in three channels
+
+## Example: Dual critical paths in three channels
 
 ![Example](example.png)
 
@@ -54,6 +55,7 @@ frappeGantt.saveTaskListToGantt(schedule, 'demo-complex.html')
 |   11    | 'p' |    6     |         [ [Task] ]         |     [ [Task], [Task] ]     | 36 | 42 | 36 | 42 | 0  | 0  |
 |   12    | 'r' |    8     |     [ [Task], [Task] ]     |         [ [Task] ]         | 42 | 50 | 42 | 50 | 0  | 0  |
 |   13    | 's' |    1     |     [ [Task], [Task] ]     |             []             | 50 | 51 | 50 | 51 | 0  | 0  |
+
 
 # Tests
 See test.js for the full suite

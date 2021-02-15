@@ -10,8 +10,8 @@ const debug = require('debug')('cp')
 const Schedule = require('./schedule')
 const Task = require('./task')
 
-// const FrappeMaker = require('./frappeMaker')
-// const frappeGantt = new FrappeMaker()
+const FrappeMaker = require('./frappeMaker')
+const frappeGantt = new FrappeMaker()
 
 // const schedule = new Schedule()
 //
@@ -89,3 +89,7 @@ console.log(`Critical Paths: `)
 schedule.criticalPaths.forEach((cpath) =>
 	console.log(cpath.join(' -> '))
 )
+
+console.table(schedule.tasks)
+
+frappeGantt.saveTaskListToGantt(schedule)
