@@ -1,38 +1,26 @@
-Date.prototype.addBusinessDays = function (dplus, adjustSilently = false) {
-  const verbose = false // Enable extra diagnostic output
-  const d = new Date(this)
+/* addBusinessDays
+ *
+ * Returns a new Date that is `dplus` business days after `date`.
+ * If `date` falls on a weekend it is silently (or noisily) advanced to Monday first.
+ */
+function addBusinessDays(date, dplus, adjustSilently = false) {
+  const d = new Date(date)
 
-  // If the incoming date is in a weekend, push to the next weekday
-  // adjustSilently governs display (or not) of forced date change
   if (d.getDay() === 0) {
     if (!adjustSilently) {
-      // Display forced input date change?
       console.error(
         `Error: invalid day of week: ${d.getDay()}; expected value between 1 and 5, inclusive. Forcing to next business day`
       )
     }
     d.setDate(d.getDate() + 1)
-    if (!adjustSilently) {
-      console.log(
-        `new d: ${d.getMonth() + 1}/${d.getDate()}/${d.getFullYear()}`
-      )
-    }
   } else if (d.getDay() === 6) {
     if (!adjustSilently) {
-      // Display forced input date change?
       console.error(
         `Error: invalid day of week: ${d.getDay()}; expected value between 1 and 5, inclusive. Forcing to next business day`
       )
     }
     d.setDate(d.getDate() + 2)
-    if (!adjustSilently) {
-      console.log(
-        `new d: ${d.getMonth() + 1}/${d.getDate()}/${d.getFullYear()}`
-      )
-    }
   }
-
-  const now = new Date(d.getTime())
 
   const d2we = 6 - d.getDay()
   const d2m = d2we + 2
@@ -45,17 +33,6 @@ Date.prototype.addBusinessDays = function (dplus, adjustSilently = false) {
 
   d.setDate(d.getDate() + daystoadd)
 
-  if (verbose) {
-    console.log(
-      `${
-        now.getMonth() + 1
-      }/${now.getDate()}/${now.getFullYear()} + ${dplus} = ${
-        d.getMonth() + 1
-      }/${d.getDate()}/${d.getFullYear()}`
-    )
-  }
-
-  // If the newly calculated date is on a weekend, throw a new Error
   if (d.getDay() === 0 || d.getDay() === 6) {
     throw new Error(
       `Error: invalid result day of week: ${d.getDay()}; Value must be between 1 and 5, inclusive.`
@@ -65,72 +42,45 @@ Date.prototype.addBusinessDays = function (dplus, adjustSilently = false) {
   return d
 }
 
-/* workingDaysFrom
+/* workingDaysBetween
+ *
+ * Returns the number of working days between fromDate and toDate.
+ * Same-day returns 0. Returns -1 for invalid or reversed input.
  *
  * Source: https://mygeekjourney.com/programming-notes/javascript-how-to-calculate-number-of-working-days/
- *
  */
-Date.prototype.workingDaysFrom = function (fromDate) {
-  // ensure that the argument is a valid and past date
-  if (!fromDate || isNaN(fromDate) || this < fromDate) {
-    console.log(`ERR: invalid date!`)
-    return -1
-  }
+function workingDaysBetween(fromDate, toDate) {
+  const frD = new Date(fromDate)
+  const toD = new Date(toDate)
 
-  // clone date to avoid messing up original date and time
-  var frD = new Date(fromDate.getTime()),
-    toD = new Date(this.getTime()),
-    numOfWorkingDays = 1
-
-  // reset time portion
   frD.setHours(0, 0, 0, 0)
   toD.setHours(0, 0, 0, 0)
 
+  if (!fromDate || isNaN(frD) || !toDate || isNaN(toD) || toD < frD) {
+    return -1
+  }
+
+  let numOfWorkingDays = 0
+
   while (frD < toD) {
     frD.setDate(frD.getDate() + 1)
-    var day = frD.getDay()
-    if (day != 0 && day != 6) {
+    const day = frD.getDay()
+    if (day !== 0 && day !== 6) {
       numOfWorkingDays++
     }
   }
+
   return numOfWorkingDays
 }
 
-/* workingDaysFromNow: Calculate number of working days to some future date
+/* workingDaysFromNow
  *
- * Parameter: {date} toDate Future date
- * Returns: {number} Number of working days between now and toDate
- *
- * Based on: https://mygeekjourney.com/programming-notes/javascript-how-to-calculate-number-of-working-days/
- *
+ * Returns the number of working days from today to toDate.
+ * Returns -1 if toDate is in the past or invalid.
  */
-Date.prototype.workingDaysFromNow = function (toDate) {
-  // ensure that the argument is a valid and past date
-  try {
-    let toD = new Date(toDate)
-
-    if (!toDate || toD < this) {
-      return -1
-    }
-
-    // clone date to avoid messing up original date and time
-    //   var toD = new Date(toDate.getTime())
-    var frD = new Date(this.getTime())
-    var numOfWorkingDays = 1
-
-    // reset time portion
-    frD.setHours(0, 0, 0, 0)
-    toD.setHours(0, 0, 0, 0)
-
-    while (frD < toD) {
-      frD.setDate(frD.getDate() + 1)
-      var day = frD.getDay()
-      if (day != 0 && day != 6) {
-        numOfWorkingDays++
-      }
-    }
-    return numOfWorkingDays
-  } catch (error) {
-    throw new Error(`Invalid toDate ${toDate}`)
-  }
+function workingDaysFromNow(toDate) {
+  const to = toDate instanceof Date ? toDate : new Date(toDate)
+  return workingDaysBetween(new Date(), to)
 }
+
+module.exports = { addBusinessDays, workingDaysBetween, workingDaysFromNow }

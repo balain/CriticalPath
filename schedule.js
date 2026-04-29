@@ -12,7 +12,7 @@ class Schedule {
 	}
 
 	addTasks(taskArray) {
-		taskArray.forEach((t) => { 
+		taskArray.forEach((t) => {
 			this.addTask(t)
 		})
 	}
@@ -27,18 +27,68 @@ class Schedule {
 
 	calc() {
 		debug(`calc() called`)
-		// Calc ES and EF
-		this._forward(this.tasks[0], 0)
-		// Calc LS and LF
-		let latestTask = this.getLatestTask()
-		this._backward(latestTask, latestTask.ef)
-		// Now calc TF and FF
-		this.tasks.forEach((t) => {
+
+		// Reset state so calc() is idempotent
+		this.tasks.forEach(t => {
+			t.es = 0
+			t.ef = 0
+			t.ls = Infinity
+			t.lf = Infinity
+			t.tf = undefined
+			t.ff = undefined
+		})
+		this.calculated = false
+
+		// Forward pass using Kahn's topological sort — handles multiple head tasks
+		// and eliminates recursion depth limits
+		const topoOrder = this._forwardPass()
+
+		// Backward pass in reverse topological order — handles multiple tail tasks
+		this._backwardPass(topoOrder)
+
+		this.tasks.forEach(t => {
 			this._calcTF(t)
 			this._calcFF(t)
 		})
-		this._sanityCheck() // Throw Error if any problems are found
+
+		this._sanityCheck()
 		this.calculated = true
+	}
+
+	_forwardPass() {
+		const inCount = new Map(this.tasks.map(t => [t, t.preds.length]))
+		const queue = this.tasks.filter(t => t.preds.length === 0)
+		const order = []
+
+		while (queue.length > 0) {
+			const t = queue.shift()
+			t.ef = t.es + t.duration
+			order.push(t)
+
+			t.succs.forEach(s => {
+				if (t.ef > s.es) s.es = t.ef
+				inCount.set(s, inCount.get(s) - 1)
+				if (inCount.get(s) === 0) queue.push(s)
+			})
+		}
+
+		if (order.length !== this.tasks.length) {
+			throw new Error('Cycle detected in task graph')
+		}
+
+		return order
+	}
+
+	_backwardPass(topoOrder) {
+		const projectEnd = Math.max(...this.tasks.map(t => t.ef))
+
+		for (let i = topoOrder.length - 1; i >= 0; i--) {
+			const t = topoOrder[i]
+			t.lf = t.succs.length === 0
+				? projectEnd
+				: Math.min(...t.succs.map(s => s.ls))
+			t.ls = t.lf - t.duration
+		}
 	}
 
 	_calcTF(t) {
@@ -47,51 +97,22 @@ class Schedule {
 
 	_calcFF(t) {
 		debug(`_calcFF(${t.id})...`)
-		let lowestES = 999
-		if (t.succs.length) {
-			t.succs.forEach((s) => {
-				if (s.es < lowestES) {
-					debug(`...setting t.ff to ${s.es - t.ef}`)
-					t.ff = s.es - t.ef
-					lowestES = s.es
-				}
-			})
-		} else {
-			debug(`...no successors; setting FF to 0`)
+		if (!t.succs.length) {
 			t.ff = 0
+			return
 		}
-	}
-
-	_forward(t, es) {
-		// Calculate ES EF
-		debug(`_forward(${t.id}, ${es} > ${t.es}?)`)
-		t.es = es > t.es ? es : t.es
-		t.ef = t.es + t.duration
-		t.succs.forEach((s) => {
-			this._forward(s, t.ef)
-		})
-	}
-
-	_backward(t, lf) {
-		// Calculate LS LF
-		debug(`_backward(${t.id}, ${lf} < ${t.lf}?)`)
-		t.lf = lf < t.lf ? lf : t.lf
-		t.ls = t.lf - t.duration
-		t.preds.forEach((p) => {
-			this._backward(p, t.ls)
-		})
+		t.ff = Math.min(...t.succs.map(s => s.es)) - t.ef
 	}
 
 	_sanityCheck() {
-		// Verify all FF <= TF
 		this.tasks.forEach((t) => {
 			if (t.ff > t.tf) {
 				throw new Error(`ERROR with ${t.id}: FreeFloat (${t.ff}) > TotalFloat (${t.tf})`)
 			}
-			if (t.es < 0) { throw new Error(`Invalid (negative) value: t.es == ${t.es}`)}
-			if (t.ef < 0) { throw new Error(`Invalid (negative) value: t.ef == ${t.ef}`)}
-			if (t.ls < 0) { throw new Error(`Invalid (negative) value: t.ls == ${t.ls}`)}
-			if (t.lf < 0) { throw new Error(`Invalid (negative) value: t.lf == ${t.lf}`)}
+			if (t.es < 0) { throw new Error(`Invalid (negative) value: t.es == ${t.es}`) }
+			if (t.ef < 0) { throw new Error(`Invalid (negative) value: t.ef == ${t.ef}`) }
+			if (t.ls < 0) { throw new Error(`Invalid (negative) value: t.ls == ${t.ls}`) }
+			if (t.lf < 0) { throw new Error(`Invalid (negative) value: t.lf == ${t.lf}`) }
 		})
 		debug(`Sanity Check passed!`)
 	}
@@ -101,75 +122,61 @@ class Schedule {
 		let efVal = -1
 		let lt
 		this.tasks.forEach((t) => {
-			debug(`...checking ${t.id}: t.lf (${t.ef}) > efVal (${efVal})`)
 			if (t.ef > efVal) {
-				debug(`...yes`)
 				efVal = t.ef
 				lt = t
 			}
 		})
 
 		if (lt instanceof Task) {
-			debug(`...glt/ Setting lt.lf to lt.ef == ${lt.ef}`)
-			lt.lf = lt.ef
+			return lt
 		} else {
 			throw new TypeError(`lt isn't a Task; it's a ${typeof lt}`)
 		}
-		debug(`...returning ${lt.id}`)
-		return(lt)
 	}
 
 	getHeadTasks() {
-		return this.tasks.filter(t => t.ff ==0 && t.tf == 0 && t.preds.length == 0)
+		if (!this.calculated) this.calc()
+		return this.tasks.filter(t => t.ff === 0 && t.tf === 0 && t.preds.length === 0)
 	}
-	
+
 	getTailTasks() {
-		return this.tasks.filter(t => t.ff == 0 && t.tf == 0 && t.succs.length == 0)
+		if (!this.calculated) this.calc()
+		return this.tasks.filter(t => t.ff === 0 && t.tf === 0 && t.succs.length === 0)
 	}
-	
+
 	criticalPath() {
+		if (!this.calculated) this.calc()
 		let criticalPathTasks = []
 		let dur = -1
 
 		this.tasks.forEach((t) => {
-			if (t.ff == 0 && t.tf == 0) {
+			if (t.ff === 0 && t.tf === 0) {
 				criticalPathTasks.push(t)
-				if (t.lf > dur) { dur = t.lf } 
+				if (t.lf > dur) { dur = t.lf }
 			}
 		})
 		return({ tasks: criticalPathTasks, duration: dur })
 	}
-	
+
 	calcCriticalPaths() {
-		if (!this.calculated) {
-			this.calc()
-		}
+		if (!this.calculated) this.calc()
 		this.criticalPaths = []
-		this.getHeadTasks().forEach((t) => {
-			this.walkCP(t, [t], 0)
-		})                               
+		this.getHeadTasks().forEach(t => this.walkCP(t, [t]))
 	}
 
-	walkCP(task, path, level) {
-		if (task.succs.length) {
-			task.succs.forEach((s) => {
-				if (s.tf == 0 && s.ff == 0) {
-					// Truncate path to end in task
-					path.splice(level+1)
-					path.push(s)
-					this.walkCP(s, path, level + 1)
-				}
-			})
-		} else {
+	walkCP(task, path) {
+		const critSuccs = task.succs.filter(s => s.tf === 0 && s.ff === 0)
+		if (!critSuccs.length) {
 			this.criticalPaths.push(path.map(t => t.id))
+		} else {
+			critSuccs.forEach(s => this.walkCP(s, [...path, s]))
 		}
 	}
 
 	countCriticalPaths() {
-		if (!this.criticalPaths) {
-			this.calcCriticalPaths()
-		}
-		return(this.criticalPaths.length)
+		if (!this.criticalPaths) this.calcCriticalPaths()
+		return this.criticalPaths.length
 	}
 }
 

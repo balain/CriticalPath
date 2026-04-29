@@ -2,7 +2,7 @@
   "name": "criticalpath",
   "version": "1.0.0",
   "description": "",
-  "main": "cp.js",
+  "main": "index.js",
   "scripts": {
     "test": "nyc ava"
   },
