@@ -2,77 +2,72 @@ const test = require('ava')
 
 const Schedule = require('./schedule')
 const Task = require('./task')
+const { addBusinessDays, workingDaysBetween, workingDaysFromNow } = require('./dateExtension')
 
 function getRandomSingleDigitNonZeroInt() {
-	return(getRandomInt(1,9))
+	return getRandomInt(1, 10) // [1, 9] inclusive
 }
 
 function getRandomInt(min, max) {
-	min = Math.ceil(min);
-	max = Math.floor(max);
-	return Math.floor(Math.random() * (max - min) + min); //The maximum is exclusive and the minimum is inclusive
+	min = Math.ceil(min)
+	max = Math.floor(max)
+	return Math.floor(Math.random() * (max - min) + min) // max is exclusive
 }
 
 function sumDurations(durs) {
-	return durs.reduce((a,b) => a + b, 0)
+	return durs.reduce((a, b) => a + b, 0)
 }
 
-test.beforeEach(t => { })
+// ─── Schedule / Task basics ──────────────────────────────────────────────────
 
 test('schedule-toString', t => {
 	const schedule = new Schedule()
-	schedule.addTask(new Task("a", 10))
-	console.log(schedule.toString())
-	t.pass()
+	schedule.addTask(new Task('a', 10))
+	t.is(schedule.toString(), 'Schedule: Task count: 1')
 })
 
 test('task-to-string', t => {
-  const task = new Task("a", 10)
-  console.log(task.toString())
-  t.true(task.toString() === `Task: a: Start: undefined; Dur: 10; ES: -1; EF: -1; LS: 9999; LF: 9999; Pred count: 0; Succ count: 0`)
+	const task = new Task('a', 10)
+	t.is(
+		task.toString(),
+		`Task: a: Dur: 10; ES: 0; EF: 0; LS: Infinity; LF: Infinity; Pred count: 0; Succ count: 0`
+	)
 })
 
 test('pred-succ-errors', t => {
-	const schedule = new Schedule()
-	let a = new Task("a", 3)
-  let b = new Task("b", 10)
-  let c = new Task("c", a, b)
-  
-  t.throws(() => { a.addSucc("b"); }, { instanceOf: TypeError })
-  t.throws(() => { b.addPred("a"); }, { instanceOf: TypeError })
-  t.pass()
+	const a = new Task('a', 3)
+	const b = new Task('b', 10)
+	t.throws(() => { a.addSucc('b') }, { instanceOf: TypeError })
+	t.throws(() => { b.addPred('a') }, { instanceOf: TypeError })
 })
 
 test('pred-succ-setting', t => {
-	const schedule = new Schedule()
-	let a = new Task("a", 3)
-  let b = new Task("b", 10)
-  b.setPreds(a)
-  t.pass()
+	const a = new Task('a', 3)
+	const b = new Task('b', 10)
+	b.setPreds(a)
+	t.true(b.preds.includes(a))
+	t.true(a.succs.includes(b))
 })
 
+// ─── Single Critical Path ─────────────────────────────────────────────────────
+
 /*
- * Single Critical Path: Simple short single channel
  * a - b - c
- *
- * Critical Path:
- * a - b - c
- *
  */
 test('single-cp-simple-short-single-channel', t => {
 	const schedule = new Schedule()
 
-	let aDur = getRandomSingleDigitNonZeroInt()
-	let bDur = getRandomSingleDigitNonZeroInt()
-	let cDur = getRandomSingleDigitNonZeroInt()
+	const aDur = getRandomSingleDigitNonZeroInt()
+	const bDur = getRandomSingleDigitNonZeroInt()
+	const cDur = getRandomSingleDigitNonZeroInt()
 
-	let a = new Task("a", aDur)
-	let b = new Task("b", bDur, [a])
-	let c = new Task("c", cDur, [b])
-	
-	schedule.addTasks([a,b,c])
+	const a = new Task('a', aDur)
+	const b = new Task('b', bDur, [a])
+	const c = new Task('c', cDur, [b])
+
+	schedule.addTasks([a, b, c])
 	schedule.calc()
-	let cp = schedule.criticalPath()
+	const cp = schedule.criticalPath()
 	t.is(cp.tasks.length, 3)
 	t.true(cp.tasks.includes(a))
 	t.true(cp.tasks.includes(b))
@@ -81,35 +76,29 @@ test('single-cp-simple-short-single-channel', t => {
 })
 
 /*
- * Single Critical Path: Simple long single channel
  * a - b - c - d - e - f
- *
- * Critical Path:
- *
- * a - b - c - d - e - f
- *
  */
 test('single-cp-simple-long-single-channel', t => {
 	const schedule = new Schedule()
 
-	let aDur = getRandomSingleDigitNonZeroInt()
-	let bDur = getRandomSingleDigitNonZeroInt()
-	let cDur = getRandomSingleDigitNonZeroInt()
-	let dDur = getRandomSingleDigitNonZeroInt()
-	let eDur = getRandomSingleDigitNonZeroInt()
-	let fDur = getRandomSingleDigitNonZeroInt()
+	const aDur = getRandomSingleDigitNonZeroInt()
+	const bDur = getRandomSingleDigitNonZeroInt()
+	const cDur = getRandomSingleDigitNonZeroInt()
+	const dDur = getRandomSingleDigitNonZeroInt()
+	const eDur = getRandomSingleDigitNonZeroInt()
+	const fDur = getRandomSingleDigitNonZeroInt()
 
-	let a = new Task("a", aDur)
-	let b = new Task("b", bDur, [a])
-	let c = new Task("c", cDur, [b])
-	let d = new Task("d", dDur, [c])
-	let e = new Task("e", eDur, [d])
-	let f = new Task("f", fDur, [e])
-	
-	schedule.addTasks([a,b,c,d,e,f])
+	const a = new Task('a', aDur)
+	const b = new Task('b', bDur, [a])
+	const c = new Task('c', cDur, [b])
+	const d = new Task('d', dDur, [c])
+	const e = new Task('e', eDur, [d])
+	const f = new Task('f', fDur, [e])
+
+	schedule.addTasks([a, b, c, d, e, f])
 	schedule.calc()
-	let cp = schedule.criticalPath()
-	
+	const cp = schedule.criticalPath()
+
 	t.is(cp.tasks.length, 6)
 	t.true(cp.tasks.includes(a))
 	t.true(cp.tasks.includes(b))
@@ -121,37 +110,26 @@ test('single-cp-simple-long-single-channel', t => {
 })
 
 /*
- * Single Critical Path: Simple dual channel
  * a - b - d - e - f
  *       \   /
- *         c
- *
- * Critical Path:
- *
- * a - b - c - e - f
- *
+ *         c      (cDur > dDur, so CP goes through c)
  */
 test('single-cp-simple-dual-channel', t => {
 	const schedule = new Schedule()
 
-	let aDur = 5
-	let bDur = 3
-	let cDur = 6
-	let dDur = 2
-	let eDur = 1
-	let fDur = 4
+	const aDur = 5, bDur = 3, cDur = 6, dDur = 2, eDur = 1, fDur = 4
 
-	let a = new Task("a", aDur)
-	let b = new Task("b", bDur, [a])
-	let c = new Task("c", cDur, [b])
-	let d = new Task("d", dDur, [b])
-	let e = new Task("e", eDur, [c,d])
-	let f = new Task("f", fDur, [e])
-	
-	schedule.addTasks([a,b,c,d,e,f])
+	const a = new Task('a', aDur)
+	const b = new Task('b', bDur, [a])
+	const c = new Task('c', cDur, [b])
+	const d = new Task('d', dDur, [b])
+	const e = new Task('e', eDur, [c, d])
+	const f = new Task('f', fDur, [e])
+
+	schedule.addTasks([a, b, c, d, e, f])
 	schedule.calc()
-	let cp = schedule.criticalPath()
-	
+	const cp = schedule.criticalPath()
+
 	t.is(cp.tasks.length, 5)
 	t.true(cp.tasks.includes(a))
 	t.true(cp.tasks.includes(b))
@@ -163,37 +141,26 @@ test('single-cp-simple-dual-channel', t => {
 })
 
 /*
- * Single Critical Path: Simple alt dual channel
  * a - b - d - e - f
  *       \   /   /
  *         c ----
- *
- * Critical Path:
- *
- * a - b - c - e - f
- *
  */
 test('single-cp-simple-alt-dual-channel', t => {
 	const schedule = new Schedule()
 
-	let aDur = 5
-	let bDur = 3
-	let cDur = 6
-	let dDur = 2
-	let eDur = 1
-	let fDur = 4
+	const aDur = 5, bDur = 3, cDur = 6, dDur = 2, eDur = 1, fDur = 4
 
-	let a = new Task("a", aDur)
-	let b = new Task("b", bDur, [a])
-	let c = new Task("c", cDur, [b])
-	let d = new Task("d", dDur, [b])
-	let e = new Task("e", eDur, [c,d])
-	let f = new Task("f", fDur, [c,e])
-	
-	schedule.addTasks([a,b,c,d,e,f])
+	const a = new Task('a', aDur)
+	const b = new Task('b', bDur, [a])
+	const c = new Task('c', cDur, [b])
+	const d = new Task('d', dDur, [b])
+	const e = new Task('e', eDur, [c, d])
+	const f = new Task('f', fDur, [c, e])
+
+	schedule.addTasks([a, b, c, d, e, f])
 	schedule.calc()
-	let cp = schedule.criticalPath()
-	
+	const cp = schedule.criticalPath()
+
 	t.is(cp.tasks.length, 5)
 	t.true(cp.tasks.includes(a))
 	t.true(cp.tasks.includes(b))
@@ -205,49 +172,35 @@ test('single-cp-simple-alt-dual-channel', t => {
 })
 
 /*
- * Single Critical Path: Complex dual channel
  * a - b - d - e - g - h - j - l
  *       \   /   /   \       /
  *         c - f       i - k
  *
- * Critical Path:
- *
- * a - b - c - f - g - i - k - l
- *
+ * CP: a - b - c - f - g - i - k - l
  */
 test('single-cp-complex-dual-channel', t => {
 	const schedule = new Schedule()
 
-	let aDur = 5
-	let bDur = 3
-	let cDur = 6
-	let dDur = 2
-	let eDur = 1
-	let fDur = 4
-	let gDur = 7
-	let hDur = 1
-	let iDur = 5
-	let jDur = 3
-	let kDur = 8
-	let lDur = 2
+	const aDur = 5, bDur = 3, cDur = 6, dDur = 2, eDur = 1
+	const fDur = 4, gDur = 7, hDur = 1, iDur = 5, jDur = 3, kDur = 8, lDur = 2
 
-	let a = new Task("a", aDur)
-	let b = new Task("b", bDur, [a])
-	let c = new Task("c", cDur, [b])
-	let d = new Task("d", dDur, [b])
-	let e = new Task("e", eDur, [c,d])
-	let f = new Task("f", fDur, [c])
-	let g = new Task("g", gDur, [e,f])
-	let h = new Task("h", hDur, [g])
-	let i = new Task("i", iDur, [g])
-	let j = new Task("j", jDur, [h])
-	let k = new Task("k", kDur, [i])
-	let l = new Task("l", lDur, [j,k])
-	
-	schedule.addTasks([a,b,c,d,e,f,g,h,i,j,k,l])
+	const a = new Task('a', aDur)
+	const b = new Task('b', bDur, [a])
+	const c = new Task('c', cDur, [b])
+	const d = new Task('d', dDur, [b])
+	const e = new Task('e', eDur, [c, d])
+	const f = new Task('f', fDur, [c])
+	const g = new Task('g', gDur, [e, f])
+	const h = new Task('h', hDur, [g])
+	const i = new Task('i', iDur, [g])
+	const j = new Task('j', jDur, [h])
+	const k = new Task('k', kDur, [i])
+	const l = new Task('l', lDur, [j, k])
+
+	schedule.addTasks([a, b, c, d, e, f, g, h, i, j, k, l])
 	schedule.calc()
-	let cp = schedule.criticalPath()
-	
+	const cp = schedule.criticalPath()
+
 	t.is(cp.tasks.length, 8)
 	t.true(cp.tasks.includes(a))
 	t.true(cp.tasks.includes(b))
@@ -261,50 +214,38 @@ test('single-cp-complex-dual-channel', t => {
 	t.false(cp.tasks.includes(j))
 	t.true(cp.tasks.includes(k))
 	t.true(cp.tasks.includes(l))
-
-	t.is(cp.duration, sumDurations([aDur, bDur, cDur, fDur, gDur,iDur,kDur,lDur]))
+	t.is(cp.duration, sumDurations([aDur, bDur, cDur, fDur, gDur, iDur, kDur, lDur]))
 })
 
 /*
- * Single Critical Path: Simple triple channel
  * a - b - c - e
  *       \   /   \
  *         d - f - h - i
  *           \   /
  *             g
  *
- * Critical Path:
- *
- * a - b - d - g - h - i
- *
+ * CP: a - b - d - g - h - i
  */
 test('single-cp-simple-triple-channel', t => {
 	const schedule = new Schedule()
 
-	let aDur = 5
-	let bDur = 3
-	let cDur = 6
-	let dDur = 2
-	let eDur = 1
-	let fDur = 4
-	let gDur = 7
-	let hDur = 1
-	let iDur = 5
+	const aDur = 5, bDur = 3, cDur = 6, dDur = 2, eDur = 1
+	const fDur = 4, gDur = 7, hDur = 1, iDur = 5
 
-	let a = new Task("a", aDur)
-	let b = new Task("b", bDur, [a])
-	let c = new Task("c", cDur, [b])
-	let d = new Task("d", dDur, [b])
-	let e = new Task("e", eDur, [c,d])
-	let f = new Task("f", fDur, [d])
-	let g = new Task("g", gDur, [d])
-	let h = new Task("h", hDur, [e,f,g])
-	let i = new Task("i", iDur, [h])
-	
-	schedule.addTasks([a,b,c,d,e,f,g,h,i])
+	const a = new Task('a', aDur)
+	const b = new Task('b', bDur, [a])
+	const c = new Task('c', cDur, [b])
+	const d = new Task('d', dDur, [b])
+	const e = new Task('e', eDur, [c, d])
+	const f = new Task('f', fDur, [d])
+	const g = new Task('g', gDur, [d])
+	const h = new Task('h', hDur, [e, f, g])
+	const i = new Task('i', iDur, [h])
+
+	schedule.addTasks([a, b, c, d, e, f, g, h, i])
 	schedule.calc()
-	let cp = schedule.criticalPath()
-	
+	const cp = schedule.criticalPath()
+
 	t.is(cp.tasks.length, 6)
 	t.true(cp.tasks.includes(a))
 	t.true(cp.tasks.includes(b))
@@ -315,70 +256,40 @@ test('single-cp-simple-triple-channel', t => {
 	t.true(cp.tasks.includes(g))
 	t.true(cp.tasks.includes(h))
 	t.true(cp.tasks.includes(i))
-
-	t.is(cp.duration, sumDurations([aDur, bDur, dDur, gDur, hDur,iDur]))
+	t.is(cp.duration, sumDurations([aDur, bDur, dDur, gDur, hDur, iDur]))
 })
 
-/*
- * Single Critical Path: Moderate triple channel
- * a - b - c - e           k - n - p - q
- *       \   /   \       /   /       \   \
- *         d - f - h - i - l           r - s
- *           \   /   \               /
- *             g       j - m - o - -
- *
- * Critical Path:
- *
- * a - b - d - g - h - i - k - n - p - r - s
- *
- */
 test('single-cp-moderate-triple-channel', t => {
 	const schedule = new Schedule()
 
-	let aDur = 5
-	let bDur = 3
-	let cDur = 6
-	let dDur = 2
-	let eDur = 1
-	let fDur = 4
-	let gDur = 7
-	let hDur = 1
-	let iDur = 5
-	let jDur = 3
-	let kDur = 8
-	let lDur = 2
-	let mDur = 1
-	let nDur = 5
-	let oDur = 3
-	let pDur = 6
-	let qDur = 4
-	let rDur = 8
-	let sDur = 1
+	const aDur = 5, bDur = 3, cDur = 6, dDur = 2, eDur = 1, fDur = 4
+	const gDur = 7, hDur = 1, iDur = 5, jDur = 3, kDur = 8, lDur = 2
+	const mDur = 1, nDur = 5, oDur = 3, pDur = 6, qDur = 4, rDur = 8, sDur = 1
 
-	let a = new Task("a", aDur)
-	let b = new Task("b", bDur, [a])
-	let c = new Task("c", cDur, [b])
-	let d = new Task("d", dDur, [b])
-	let e = new Task("e", eDur, [c,d])
-	let f = new Task("f", fDur, [d])
-	let g = new Task("g", gDur, [d])
-	let h = new Task("h", hDur, [e,f,g])
-	let i = new Task("i", iDur, [h])
-	let j = new Task("j", jDur, [h])
-	let k = new Task("k", kDur, [i])
-	let l = new Task("l", lDur, [i])
-	let m = new Task("m", mDur, [j])
-	let n = new Task("n", nDur, [k,l])
-	let o = new Task("o", oDur, [m])
-	let p = new Task("p", pDur, [n])
-	let q = new Task("q", qDur, [p])
-	let r = new Task("r", rDur, [p,o])
-	let s = new Task("s", sDur, [q,r])
-	
-	schedule.addTasks([a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s])
+	const a = new Task('a', aDur)
+	const b = new Task('b', bDur, [a])
+	const c = new Task('c', cDur, [b])
+	const d = new Task('d', dDur, [b])
+	const e = new Task('e', eDur, [c, d])
+	const f = new Task('f', fDur, [d])
+	const g = new Task('g', gDur, [d])
+	const h = new Task('h', hDur, [e, f, g])
+	const i = new Task('i', iDur, [h])
+	const j = new Task('j', jDur, [h])
+	const k = new Task('k', kDur, [i])
+	const l = new Task('l', lDur, [i])
+	const m = new Task('m', mDur, [j])
+	const n = new Task('n', nDur, [k, l])
+	const o = new Task('o', oDur, [m])
+	const p = new Task('p', pDur, [n])
+	const q = new Task('q', qDur, [p])
+	const r = new Task('r', rDur, [p, o])
+	const s = new Task('s', sDur, [q, r])
+
+	schedule.addTasks([a, b, c, d, e, f, g, h, i, j, k, l, m, n, o, p, q, r, s])
 	schedule.calc()
-	let cp = schedule.criticalPath()
-	
+	const cp = schedule.criticalPath()
+
 	t.is(cp.tasks.length, 11)
 	t.true(cp.tasks.includes(a))
 	t.true(cp.tasks.includes(b))
@@ -399,43 +310,32 @@ test('single-cp-moderate-triple-channel', t => {
 	t.false(cp.tasks.includes(q))
 	t.true(cp.tasks.includes(r))
 	t.true(cp.tasks.includes(s))
-
-	t.is(cp.duration, sumDurations([aDur, bDur, dDur, gDur, hDur,iDur,kDur,nDur,pDur,rDur,sDur]))
+	t.is(cp.duration, sumDurations([aDur, bDur, dDur, gDur, hDur, iDur, kDur, nDur, pDur, rDur, sDur]))
 })
 
+// ─── Dual Critical Path ───────────────────────────────────────────────────────
+
 /*
- * Dual Critical Path: Simple dual channel
- * a - b - d - e - f
+ * a - b - d - e - f      (cDur == dDur, so both paths are critical)
  *       \   /
  *         c
- *
- * Critical Paths:
- *
- * a - b - c - e - f
- * a - b - d - e - f
- *
  */
 test('dual-cp-simple-dual-channel', t => {
 	const schedule = new Schedule()
 
-	let aDur = 5
-	let bDur = 3
-	let cDur = 6
-	let dDur = cDur
-	let eDur = 1
-	let fDur = 4
+	const aDur = 5, bDur = 3, cDur = 6, dDur = cDur, eDur = 1, fDur = 4
 
-	let a = new Task("a", aDur)
-	let b = new Task("b", bDur, [a])
-	let c = new Task("c", cDur, [b])
-	let d = new Task("d", dDur, [b])
-	let e = new Task("e", eDur, [c,d])
-	let f = new Task("f", fDur, [e])
-	
-	schedule.addTasks([a,b,c,d,e,f])
+	const a = new Task('a', aDur)
+	const b = new Task('b', bDur, [a])
+	const c = new Task('c', cDur, [b])
+	const d = new Task('d', dDur, [b])
+	const e = new Task('e', eDur, [c, d])
+	const f = new Task('f', fDur, [e])
+
+	schedule.addTasks([a, b, c, d, e, f])
 	schedule.calc()
-	let cp = schedule.criticalPath()
-	
+	const cp = schedule.criticalPath()
+
 	t.is(cp.tasks.length, 6)
 	t.true(cp.tasks.includes(a))
 	t.true(cp.tasks.includes(b))
@@ -444,54 +344,38 @@ test('dual-cp-simple-dual-channel', t => {
 	t.true(cp.tasks.includes(e))
 	t.true(cp.tasks.includes(f))
 	t.is(cp.duration, sumDurations([aDur, bDur, cDur, eDur, fDur]))
-	// console.table(cp.tasks)
 })
 
 /*
- * Dual Critical Path: Complex dual channel
  * a - b - d - e - g - h - j - l
  *       \   /   /   \       /
  *         c - f       i - k
  *
- * Critical Paths:
- *
- * a - b - c - e - g - i - k - l
- * a - b - c - f - g - i - k - l
- *
+ * CPs: a-b-c-e-g-i-k-l  and  a-b-c-f-g-i-k-l
  */
 test('dual-cp-complex-dual-channel', t => {
 	const schedule = new Schedule()
 
-	let aDur = 5
-	let bDur = 3
-	let cDur = 6
-	let dDur = 2
-	let eDur = 4
-	let fDur = 4
-	let gDur = 7
-	let hDur = 1
-	let iDur = 5
-	let jDur = 3
-	let kDur = 8
-	let lDur = 2
+	const aDur = 5, bDur = 3, cDur = 6, dDur = 2, eDur = 4
+	const fDur = 4, gDur = 7, hDur = 1, iDur = 5, jDur = 3, kDur = 8, lDur = 2
 
-	let a = new Task("a", aDur)
-	let b = new Task("b", bDur, [a])
-	let c = new Task("c", cDur, [b])
-	let d = new Task("d", dDur, [b])
-	let e = new Task("e", eDur, [c,d])
-	let f = new Task("f", fDur, [c])
-	let g = new Task("g", gDur, [e,f])
-	let h = new Task("h", hDur, [g])
-	let i = new Task("i", iDur, [g])
-	let j = new Task("j", jDur, [h])
-	let k = new Task("k", kDur, [i])
-	let l = new Task("l", lDur, [j,k])
-	
-	schedule.addTasks([a,b,c,d,e,f,g,h,i,j,k,l])
+	const a = new Task('a', aDur)
+	const b = new Task('b', bDur, [a])
+	const c = new Task('c', cDur, [b])
+	const d = new Task('d', dDur, [b])
+	const e = new Task('e', eDur, [c, d])
+	const f = new Task('f', fDur, [c])
+	const g = new Task('g', gDur, [e, f])
+	const h = new Task('h', hDur, [g])
+	const i = new Task('i', iDur, [g])
+	const j = new Task('j', jDur, [h])
+	const k = new Task('k', kDur, [i])
+	const l = new Task('l', lDur, [j, k])
+
+	schedule.addTasks([a, b, c, d, e, f, g, h, i, j, k, l])
 	schedule.calc()
-	let cp = schedule.criticalPath()
-	
+	const cp = schedule.criticalPath()
+
 	t.is(cp.tasks.length, 9)
 	t.true(cp.tasks.includes(a))
 	t.true(cp.tasks.includes(b))
@@ -505,75 +389,44 @@ test('dual-cp-complex-dual-channel', t => {
 	t.false(cp.tasks.includes(j))
 	t.true(cp.tasks.includes(k))
 	t.true(cp.tasks.includes(l))
-
-	t.is(cp.duration, sumDurations([aDur, bDur, cDur, fDur, gDur,iDur,kDur,lDur]))
-	t.is(cp.duration, sumDurations([aDur, bDur, cDur, eDur, gDur,iDur,kDur,lDur]))
+	t.is(cp.duration, sumDurations([aDur, bDur, cDur, fDur, gDur, iDur, kDur, lDur]))
+	t.is(cp.duration, sumDurations([aDur, bDur, cDur, eDur, gDur, iDur, kDur, lDur]))
 })
 
-/*
- * Dual Critical Path: Moderate triple channel
- * a - b - c - e           k - n - p - q
- *       \   /   \       /   /       \   \
- *         d - f - h - i - l           r - s
- *           \   /   \               /
- *             g       j - m - o - - 
- *
- * Critical Paths:
- *
- * a - b - d - g - h - i - k - n - p - r - s
- * a - b - d - g - h - j - m - o - r - s
- *
- */
 test('dual-cp-moderate-triple-channel', t => {
 	const schedule = new Schedule()
 
-	let aDur = 5
-	let bDur = 3
-	let cDur = 6
-	let dDur = 2
-	let eDur = 1
-	let fDur = 4
-	let gDur = 7
-	let hDur = 1
-	let iDur = 5
-	let jDur = 6
-	let kDur = 8
-	let lDur = 2
-	let mDur = 6
-	let nDur = 5
-	let oDur = 12
-	let pDur = 6
-	let qDur = 4
-	let rDur = 8
-	let sDur = 1
+	const aDur = 5, bDur = 3, cDur = 6, dDur = 2, eDur = 1, fDur = 4
+	const gDur = 7, hDur = 1, iDur = 5, jDur = 6, kDur = 8, lDur = 2
+	const mDur = 6, nDur = 5, oDur = 12, pDur = 6, qDur = 4, rDur = 8, sDur = 1
 
-	let a = new Task("a", aDur)
-	let b = new Task("b", bDur, [a])
-	let c = new Task("c", cDur, [b])
-	let d = new Task("d", dDur, [b])
-	let e = new Task("e", eDur, [c,d])
-	let f = new Task("f", fDur, [d])
-	let g = new Task("g", gDur, [d])
-	let h = new Task("h", hDur, [e,f,g])
-	let i = new Task("i", iDur, [h])
-	let j = new Task("j", jDur, [h])
-	let k = new Task("k", kDur, [i])
-	let l = new Task("l", lDur, [i])
-	let m = new Task("m", mDur, [j])
-	let n = new Task("n", nDur, [l])
-  k.setSuccs([n])
-	let o = new Task("o", oDur, [m])
-	let p = new Task("p", pDur, [n])
-	let q = new Task("q", qDur, [p])
-	let r = new Task("r", rDur)
-  r.addPred(p)
-  o.setSuccs(r)
-	let s = new Task("s", sDur, [q,r])
-	
-	schedule.addTasks([a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s])
+	const a = new Task('a', aDur)
+	const b = new Task('b', bDur, [a])
+	const c = new Task('c', cDur, [b])
+	const d = new Task('d', dDur, [b])
+	const e = new Task('e', eDur, [c, d])
+	const f = new Task('f', fDur, [d])
+	const g = new Task('g', gDur, [d])
+	const h = new Task('h', hDur, [e, f, g])
+	const i = new Task('i', iDur, [h])
+	const j = new Task('j', jDur, [h])
+	const k = new Task('k', kDur, [i])
+	const l = new Task('l', lDur, [i])
+	const m = new Task('m', mDur, [j])
+	const n = new Task('n', nDur, [l])
+	k.setSuccs([n])
+	const o = new Task('o', oDur, [m])
+	const p = new Task('p', pDur, [n])
+	const q = new Task('q', qDur, [p])
+	const r = new Task('r', rDur)
+	r.addPred(p)
+	o.setSuccs(r)
+	const s = new Task('s', sDur, [q, r])
+
+	schedule.addTasks([a, b, c, d, e, f, g, h, i, j, k, l, m, n, o, p, q, r, s])
 	schedule.calc()
-	let cp = schedule.criticalPath()
-	
+	const cp = schedule.criticalPath()
+
 	t.is(cp.tasks.length, 14)
 	t.true(cp.tasks.includes(a))
 	t.true(cp.tasks.includes(b))
@@ -594,125 +447,132 @@ test('dual-cp-moderate-triple-channel', t => {
 	t.false(cp.tasks.includes(q))
 	t.true(cp.tasks.includes(r))
 	t.true(cp.tasks.includes(s))
+	t.is(cp.duration, sumDurations([aDur, bDur, dDur, gDur, hDur, iDur, kDur, nDur, pDur, rDur, sDur]))
+	t.is(cp.duration, sumDurations([aDur, bDur, dDur, gDur, hDur, jDur, mDur, oDur, rDur, sDur]))
 
-	t.is(cp.duration, sumDurations([aDur, bDur, dDur, gDur, hDur,iDur,kDur,nDur,pDur,rDur,sDur]))
-	t.is(cp.duration, sumDurations([aDur, bDur, dDur, gDur, hDur,jDur,mDur,oDur,rDur,sDur]))
-  
-  schedule.calcCriticalPaths()
-  
-  t.true(schedule.countCriticalPaths() == 2)
+	schedule.calcCriticalPaths()
+	t.is(schedule.countCriticalPaths(), 2)
 
-  let criticalPaths = schedule.criticalPaths
-
-  t.true(criticalPaths[0].join('-') == `a-b-d-g-h-i-k-n-p-r-s`)
-  t.true(criticalPaths[1].join('-') == `a-b-d-g-h-j-m-o-r-s`)
+	const criticalPaths = schedule.criticalPaths
+	t.is(criticalPaths[0].join('-'), `a-b-d-g-h-i-k-n-p-r-s`)
+	t.is(criticalPaths[1].join('-'), `a-b-d-g-h-j-m-o-r-s`)
 })
 
-/*
- * Get the head tasks for all critical paths
- * a - b - d - e - f
- *       \   /
- *         c
- *
- * Returns
- * a
- *
- */
+// ─── Head / Tail tasks ────────────────────────────────────────────────────────
+
 test('getHeadAndTailTasks', t => {
 	const schedule = new Schedule()
 
-	let aDur = 5
-	let bDur = 3
-	let cDur = 6
-	let dDur = cDur
-	let eDur = 1
-	let fDur = 4
+	const aDur = 5, bDur = 3, cDur = 6, dDur = cDur, eDur = 1, fDur = 4
 
-	let a = new Task("a", aDur)
-	let b = new Task("b", bDur, [a])
-	let c = new Task("c", cDur, [b])
-	let d = new Task("d", dDur, [b])
-	let e = new Task("e", eDur, [c,d])
-	let f = new Task("f", fDur, [e])
+	const a = new Task('a', aDur)
+	const b = new Task('b', bDur, [a])
+	const c = new Task('c', cDur, [b])
+	const d = new Task('d', dDur, [b])
+	const e = new Task('e', eDur, [c, d])
+	const f = new Task('f', fDur, [e])
 
-	schedule.addTasks([a,b,c,d,e,f])
+	schedule.addTasks([a, b, c, d, e, f])
 	schedule.calc()
-	let cp = schedule.criticalPath()
 
 	t.deepEqual(schedule.getHeadTasks(), [a])
 	t.deepEqual(schedule.getTailTasks(), [f])
 })
 
-/*
- * Count Multiple Critical Paths: Simple dual channel
- * a - b - d - e - f
- *       \   /
- *         c
- *
- * Critical Path Count: 2
- *
- * a - b - c - e - f
- * a - b - d - e - f
- *
- */
+// ─── Multiple head / tail tasks ───────────────────────────────────────────────
+
+test('multiple-head-tasks', t => {
+	const schedule = new Schedule()
+	// Two parallel starts: a (shorter) and b (longer), converging at c
+	const a = new Task('a', 3)
+	const b = new Task('b', 5)
+	const c = new Task('c', 2, [a, b])
+	const d = new Task('d', 4, [c])
+
+	schedule.addTasks([a, b, c, d])
+	schedule.calc()
+	const cp = schedule.criticalPath()
+
+	// CP goes through b (the longer head) → c → d
+	t.false(cp.tasks.includes(a))
+	t.true(cp.tasks.includes(b))
+	t.true(cp.tasks.includes(c))
+	t.true(cp.tasks.includes(d))
+	t.is(cp.duration, 5 + 2 + 4)
+})
+
+test('multiple-tail-tasks', t => {
+	const schedule = new Schedule()
+	// One start splitting into two chains with different lengths
+	const a = new Task('a', 5)
+	const b = new Task('b', 3, [a])
+	const c = new Task('c', 7, [a])
+
+	schedule.addTasks([a, b, c])
+	schedule.calc()
+	const cp = schedule.criticalPath()
+
+	t.true(cp.tasks.includes(a))
+	t.false(cp.tasks.includes(b))
+	t.true(cp.tasks.includes(c))
+	t.is(cp.duration, 5 + 7)
+})
+
+// ─── calc() idempotency ───────────────────────────────────────────────────────
+
+test('calc-is-idempotent', t => {
+	const schedule = new Schedule()
+	const a = new Task('a', 3)
+	const b = new Task('b', 5, [a])
+	schedule.addTasks([a, b])
+
+	schedule.calc()
+	const dur1 = schedule.criticalPath().duration
+	const len1 = schedule.criticalPath().tasks.length
+
+	schedule.calc()
+	const dur2 = schedule.criticalPath().duration
+	const len2 = schedule.criticalPath().tasks.length
+
+	t.is(dur1, dur2)
+	t.is(len1, len2)
+})
+
+// ─── Count / print multiple critical paths ────────────────────────────────────
+
 test('count-multiple-critical-paths', t => {
 	const schedule = new Schedule()
 
-	let aDur = 5
-	let bDur = 3
-	let cDur = 6
-	let dDur = cDur
-	let eDur = 1
-	let fDur = 4
+	const aDur = 5, bDur = 3, cDur = 6, dDur = cDur, eDur = 1, fDur = 4
 
-	let a = new Task("a", aDur)
-	let b = new Task("b", bDur, [a])
-	let c = new Task("c", cDur, [b])
-	let d = new Task("d", dDur, [b])
-	let e = new Task("e", eDur, [c,d])
-	let f = new Task("f", fDur, [e])
+	const a = new Task('a', aDur)
+	const b = new Task('b', bDur, [a])
+	const c = new Task('c', cDur, [b])
+	const d = new Task('d', dDur, [b])
+	const e = new Task('e', eDur, [c, d])
+	const f = new Task('f', fDur, [e])
 
-	schedule.addTasks([a,b,c,d,e,f])
+	schedule.addTasks([a, b, c, d, e, f])
 	schedule.calc()
-	let cp = schedule.criticalPath()
 
-  t.is(schedule.countCriticalPaths(),2)
-
+	t.is(schedule.countCriticalPaths(), 2)
 })
 
-/*
- * Print Multiple Critical Paths: Simple dual channel
- * a - b - d - e - f
- *       \   /
- *         c
- *
- * Critical Paths:
- *
- * a - b - c - e - f
- * a - b - d - e - f
- *
- * Where duration of "c" == duration of "d"
- */
 test('print-multiple-critical-paths', t => {
 	const schedule = new Schedule()
 
-	let aDur = 5
-	let bDur = 3
-	let cDur = 6
-	let dDur = cDur
-	let eDur = 1
-	let fDur = 4
+	const aDur = 5, bDur = 3, cDur = 6, dDur = cDur, eDur = 1, fDur = 4
 
-	let a = new Task("a", aDur)
-	let b = new Task("b", bDur, [a])
-	let c = new Task("c", cDur, [b])
-	let d = new Task("d", dDur, [b])
-	let e = new Task("e", eDur, [c,d])
-	let f = new Task("f", fDur, [e])
+	const a = new Task('a', aDur)
+	const b = new Task('b', bDur, [a])
+	const c = new Task('c', cDur, [b])
+	const d = new Task('d', dDur, [b])
+	const e = new Task('e', eDur, [c, d])
+	const f = new Task('f', fDur, [e])
 
-	schedule.addTasks([a,b,c,d,e,f])
+	schedule.addTasks([a, b, c, d, e, f])
 	schedule.calc()
-	let cp = schedule.criticalPath()
+	const cp = schedule.criticalPath()
 
 	t.is(cp.tasks.length, 6)
 	t.true(cp.tasks.includes(a))
@@ -722,4 +582,63 @@ test('print-multiple-critical-paths', t => {
 	t.true(cp.tasks.includes(e))
 	t.true(cp.tasks.includes(f))
 	t.is(cp.duration, sumDurations([aDur, bDur, cDur, eDur, fDur]))
+})
+
+// ─── dateExtension ────────────────────────────────────────────────────────────
+
+test('addBusinessDays-zero-days', t => {
+	const monday = new Date('2024-01-08') // Monday
+	const result = addBusinessDays(monday, 0)
+	t.is(result.getDay(), 1) // still Monday
+	t.is(result.getDate(), 8)
+})
+
+test('addBusinessDays-across-one-weekend', t => {
+	const friday = new Date('2024-01-05') // Friday
+	const result = addBusinessDays(friday, 1)
+	t.is(result.getDay(), 1) // Monday
+	t.is(result.getDate(), 8)
+})
+
+test('addBusinessDays-two-weeks', t => {
+	const monday = new Date('2024-01-08') // Monday Jan 8
+	const result = addBusinessDays(monday, 10)
+	t.is(result.getDay(), 1) // Monday
+	t.is(result.getDate(), 22) // Jan 22
+})
+
+test('addBusinessDays-saturday-input-adjusts', t => {
+	const saturday = new Date('2024-01-06') // Saturday
+	// Silently advance to Monday then add 0 days
+	const result = addBusinessDays(saturday, 0, true)
+	t.is(result.getDay(), 1) // Monday
+})
+
+test('workingDaysBetween-same-day', t => {
+	const d = new Date('2024-01-08')
+	t.is(workingDaysBetween(d, d), 0)
+})
+
+test('workingDaysBetween-one-week', t => {
+	const mon = new Date('2024-01-08')
+	const nextMon = new Date('2024-01-15')
+	t.is(workingDaysBetween(mon, nextMon), 5)
+})
+
+test('workingDaysBetween-one-day', t => {
+	const mon = new Date('2024-01-08')
+	const tue = new Date('2024-01-09')
+	t.is(workingDaysBetween(mon, tue), 1)
+})
+
+test('workingDaysBetween-invalid-reversed', t => {
+	const future = new Date('2024-01-15')
+	const past = new Date('2024-01-08')
+	t.is(workingDaysBetween(future, past), -1)
+})
+
+test('workingDaysFromNow-past-returns-negative', t => {
+	const yesterday = new Date()
+	yesterday.setDate(yesterday.getDate() - 1)
+	t.is(workingDaysFromNow(yesterday), -1)
 })

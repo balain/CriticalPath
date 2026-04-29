@@ -2,7 +2,7 @@ const debug = require('debug')('frappeMaker')
 
 const Schedule = require('./schedule')
 const fs = require('fs')
-const dateExtension = require('./dateExtension')
+const { addBusinessDays } = require('./dateExtension')
 
 const prefix = `<!DOCTYPE html>
 <html>
@@ -25,7 +25,7 @@ var gantt = new Gantt("#gantt", tasks, { view_mode: 'Week', date_format: 'YYYY-M
 
 function getDependencies(task) {
 	debug(`getDependencies(${task.id}) returning: ${task.preds.map(t => t.id)}`)
-	return(task.preds.map(t => t.id).join(','))
+	return task.preds.map(t => t.id).join(',')
 }
 
 class frappeGanttMaker {
@@ -33,24 +33,38 @@ class frappeGanttMaker {
 
 	saveTaskListToGantt(schedule, filename = 'index.html') {
 		debug(`Saving task list to Gantt chart...`)
-		let html = []
-		let ganttTasks = []
+		if (!schedule.calculated) schedule.calc()
 
-		let now = new Date()
-		now.setHours(0,0,0,0)
+		const html = []
+		const ganttTasks = []
+
+		const now = new Date()
+		now.setHours(0, 0, 0, 0)
+
+		fs.mkdirSync('./output/', { recursive: true })
 		html.push(prefix)
+
 		schedule.tasks.forEach((task) => {
-			let deps = getDependencies(task)
-			let customClass = task.tf == 0 && task.ff == 0 ? 'critical' : ''
+			const deps = getDependencies(task)
+			const customClass = task.tf === 0 && task.ff === 0 ? 'critical' : ''
 			debug(`setting customClass for ${task.id} to ${customClass}!`)
 
-			ganttTasks.push(JSON.stringify({ id: task.id, name: task.id, start: now.addBusinessDays(task.es), end: now.addBusinessDays(task.es + task.duration - 1, true), progress: 0, dependencies: deps, custom_class: customClass }))
+			ganttTasks.push(JSON.stringify({
+				id: task.id,
+				name: task.id,
+				start: addBusinessDays(now, task.es),
+				end: addBusinessDays(now, task.es + task.duration - 1, true),
+				progress: 0,
+				dependencies: deps,
+				custom_class: customClass
+			}))
 		})
+
 		html.push(`var tasks = [${ganttTasks.join(',')}]`)
 		html.push(suffix)
 		fs.writeFileSync('./output/' + filename, html.join(''))
 		debug(`...done`)
-	}	
+	}
 }
 
 module.exports = frappeGanttMaker
